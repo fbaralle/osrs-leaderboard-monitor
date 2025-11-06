@@ -1,14 +1,9 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Post } from '@nestjs/common';
 import { IndexerService } from './indexer.service';
 
 @Controller()
 export class IndexerController {
   constructor(private readonly indexerService: IndexerService) {}
-
-  @Get('/leaderboard-osrs')
-  async getLeaderboardOsrs() {
-    return await this.indexerService.fetchLatestLeaderboardData();
-  }
 
   /** Manual execution rank events synchronization */
   @Post('/update')
