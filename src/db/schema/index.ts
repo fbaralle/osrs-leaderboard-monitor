@@ -2,8 +2,8 @@ import { uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { index } from 'drizzle-orm/sqlite-core';
 import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
 
-export const scoreUpdateEvents = sqliteTable(
-  'score_update_events',
+export const scoreUpdates = sqliteTable(
+  'score_updates',
   {
     id: integer().primaryKey({ autoIncrement: true }),
     userName: text().notNull(),

@@ -6,9 +6,10 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && tsc-alias",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start:debug": "nest start --debug --watch",
+    "start:docker": "docker compose up -d --build",
     "start": "NODE_ENV=development bun src/main.ts",
     "start:dev": "NODE_ENV=development bun --watch src/main.ts",
     "start:prod": "NODE_ENV=production bun dist/main",
@@ -21,7 +22,8 @@
     "db:migration": "npx drizzle-kit generate",
     "db:migrate": "npx drizzle-kit migrate",
     "db:migration:drop": "drizzle-kit drop",
-    "db:push": "drizzle-kit push"
+    "db:push": "npx drizzle-kit push --force",
+    "db:init": "rm -rf data && mkdir data && npm run db:push"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -60,6 +62,7 @@
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.6",
     "typescript": "^5.7.3",

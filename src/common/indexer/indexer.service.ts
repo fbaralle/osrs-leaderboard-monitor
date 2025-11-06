@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { db, schema } from 'src/db';
 import { gameApiClient } from './helpers/http';
 import { parseRankItems } from './helpers/parse';
-import { inArray, not, sql } from 'drizzle-orm';
+import { inArray, not } from 'drizzle-orm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 
@@ -11,13 +11,7 @@ import {
   FIVE_MINUTES_IN_MS,
   SYNC_LEADERBOARD_CRON_NAME,
 } from 'src/config';
-import {
-  RankItem,
-  RankItemResponse,
-  RankListResponse,
-  RankWithHistoryResponse,
-  RankWithHistoryDB,
-} from 'src/shared/types';
+import { RankItem, RankListResponse } from 'src/shared/types';
 
 @Injectable()
 export class IndexerService {
@@ -61,34 +55,6 @@ export class IndexerService {
     return parsedData;
   }
 
-  async getCurrentLeaderboard() {
-    this.logger.log('Get current leaderboard');
-
-    const leaderboard: Array<RankItemResponse> = await db.all(sql`
-      WITH latest AS (
-      SELECT
-        "userName",
-        "score",
-        "rank",
-        "updatedAtTimestamp",
-        ROW_NUMBER() OVER (
-          PARTITION BY "userName"
-          ORDER BY "updatedAtTimestamp" DESC
-        ) AS rn
-      FROM "score_update_events"
-    )
-    SELECT
-      "userName",
-      "score",
-      "rank",
-      strftime('%Y-%m-%dT%H:%M:%fZ', "updatedAtTimestamp" / 1000, 'unixepoch') AS "lastUpdated"
-    FROM latest
-    WHERE rn = 1
-    ORDER BY "rank" ASC`);
-
-    return leaderboard;
-  }
-
   async syncRankingEvents() {
     this.logger.debug('Updating rakings');
 
@@ -105,7 +71,7 @@ export class IndexerService {
     const result = await db.transaction(async (tx) => {
       // 1) Insert new snapshots; ignore duplicates (same userName+rank+score)
       const inserted = await tx
-        .insert(schema.scoreUpdateEvents)
+        .insert(schema.scoreUpdates)
         .values(
           leaderboardData.map((item) => ({
             userName: item.name,
@@ -120,9 +86,9 @@ export class IndexerService {
          */
         .onConflictDoNothing({
           target: [
-            schema.scoreUpdateEvents.userName,
-            schema.scoreUpdateEvents.rank,
-            schema.scoreUpdateEvents.score,
+            schema.scoreUpdates.userName,
+            schema.scoreUpdates.rank,
+            schema.scoreUpdates.score,
           ],
         })
         .returning();
@@ -136,13 +102,10 @@ export class IndexerService {
       // 2) Stop tracking users not present anymore (purge all their history)
       if (currentUsersInLeaderboard.length > 0) {
         const removed = await tx
-          .delete(schema.scoreUpdateEvents)
+          .delete(schema.scoreUpdates)
           .where(
             not(
-              inArray(
-                schema.scoreUpdateEvents.userName,
-                currentUsersInLeaderboard,
-              ),
+              inArray(schema.scoreUpdates.userName, currentUsersInLeaderboard),
             ),
           )
           .returning();
@@ -158,60 +121,6 @@ export class IndexerService {
     );
 
     return result;
-  }
-
-  async getLeaderboardWithHistory(): Promise<RankWithHistoryResponse[]> {
-    this.logger.debug('Get leaderboard with rank history');
-
-    const rows = await db.all<RankWithHistoryDB>(sql`
-      WITH latest AS (
-        SELECT
-          "userName",
-          "score",
-          "rank",
-          "updatedAtTimestamp",
-          ROW_NUMBER() OVER (
-            PARTITION BY "userName"
-            ORDER BY "updatedAtTimestamp" DESC
-          ) AS rn
-        FROM "score_update_events"
-      ),
-      history AS (
-        SELECT
-          "userName",
-          /* Build DESC-sorted JSON array of per-user events */
-          json_group_array(
-            json_object(
-              'rank', "rank",
-              'score', "score",
-              'lastUpdated', strftime('%Y-%m-%dT%H:%M:%fZ', ("updatedAtTimestamp"/1000.0), 'unixepoch')
-            )
-            ORDER BY "updatedAtTimestamp" DESC
-          ) AS "historyJson"
-        FROM "score_update_events"
-        GROUP BY "userName"
-      )
-      SELECT
-        l."userName"                 AS "userName",
-        l."rank"                     AS "rank",
-        l."score"                    AS "score",
-        strftime('%Y-%m-%dT%H:%M:%fZ', (l."updatedAtTimestamp"/1000.0), 'unixepoch') AS "lastUpdated",
-        h."historyJson"              AS "historyJson"
-      FROM latest l
-      JOIN history h USING ("userName")
-      WHERE l.rn = 1
-      ORDER BY l."rank" ASC
-  `);
-
-    return rows.map((r) => ({
-      userName: r.userName,
-      rank: r.rank,
-      score: r.score,
-      lastUpdated: r.lastUpdated,
-      history: JSON.parse(r.historyJson) as Array<
-        Omit<RankItemResponse, 'userName'>
-      >,
-    }));
   }
 
   @Cron(CronExpression.EVERY_5_MINUTES, {

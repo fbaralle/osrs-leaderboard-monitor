@@ -1,0 +1,32 @@
+services:
+  migrator:
+    build:
+      context: .
+      target: build # <-- use build stage (has dev deps + source)
+    container_name: osrs-migrator
+    working_dir: /usr/src/app
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-file:/data/osrs.db}
+    volumes:
+      - ./data:/data # share the SQLite file with the API
+    command:
+      ['bunx', 'drizzle-kit', 'push', '--force', '--config=drizzle.config.ts']
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      target: release
+    container_name: osrs-leaderboard-monitor
+    environment:
+      PORT: ${PORT:-3000}
+      DATABASE_URL: ${DATABASE_URL:-file:/data/osrs.db}
+      NODE_ENV: ${NODE_ENV:-production}
+    volumes:
+      - ./data:/data
+    ports:
+      - '${PORT:-3000}:3000'
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    restart: unless-stopped

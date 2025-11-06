@@ -50,7 +50,7 @@ export class ApiService {
           PARTITION BY "userName"
           ORDER BY "updatedAtTimestamp" DESC
         ) AS rn
-      FROM "score_update_events"
+      FROM "score_updates"
     )
     SELECT
       "userName",
@@ -95,7 +95,7 @@ export class ApiService {
             PARTITION BY "userName"
             ORDER BY "updatedAtTimestamp" DESC
           ) AS rn
-        FROM "score_update_events"
+        FROM "score_updates"
       ),
       history AS (
         SELECT
@@ -109,7 +109,7 @@ export class ApiService {
             )
             ORDER BY "updatedAtTimestamp" DESC
           ) AS "historyJson"
-        FROM "score_update_events"
+        FROM "score_updates"
         GROUP BY "userName"
       )
       SELECT
@@ -156,9 +156,9 @@ export class ApiService {
 
     const result = await db
       .select()
-      .from(schema.scoreUpdateEvents)
-      .where(eq(schema.scoreUpdateEvents.userName, userName))
-      .orderBy(desc(schema.scoreUpdateEvents.updatedAtTimestamp));
+      .from(schema.scoreUpdates)
+      .where(eq(schema.scoreUpdates.userName, userName))
+      .orderBy(desc(schema.scoreUpdates.updatedAtTimestamp));
 
     if (result.length) {
       const parsedRes = {

@@ -1,11 +1,11 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "c5b8ef3e-5c60-479d-a7a0-ce2137ed56c3",
+  "id": "ab409e32-42da-4a63-8176-cc1a367827e4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "score_update_events": {
-      "name": "score_update_events",
+    "score_updates": {
+      "name": "score_updates",
       "columns": {
         "id": {
           "name": "id",

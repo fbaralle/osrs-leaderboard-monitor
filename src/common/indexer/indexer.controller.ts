@@ -10,6 +10,7 @@ export class IndexerController {
     return await this.indexerService.fetchLatestLeaderboardData();
   }
 
+  /** Manual execution rank events synchronization */
   @Post('/update')
   async updateRankings() {
     return await this.indexerService.syncRankingEvents();

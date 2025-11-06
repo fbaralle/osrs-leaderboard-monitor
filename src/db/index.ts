@@ -1,8 +1,7 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from './schema/index';
+import { DEFAULT_DB_URL } from 'src/config';
 export { schema };
 
-console.log('[DB]', process.env.DB_FILE_NAME);
-
-export const db = drizzle(process.env.DB_FILE_NAME!);
+export const db = drizzle(process.env.DATABASE_URL ?? DEFAULT_DB_URL);

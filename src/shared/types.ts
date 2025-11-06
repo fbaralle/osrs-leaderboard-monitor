@@ -14,7 +14,7 @@ export type RankItem = {
   rank: number;
 };
 
-export type ScoreUpdateEventType = typeof schema.scoreUpdateEvents.$inferSelect;
+export type ScoreUpdateEventType = typeof schema.scoreUpdates.$inferSelect;
 
 export type RankItemResponse = {
   userName: string;
