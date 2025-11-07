@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { db, schema } from 'src/db';
 import { gameApiClient } from './helpers/http';
 import { parseRankItems } from './helpers/parse';
-import { inArray, not } from 'drizzle-orm';
+import { inArray, not, sql } from 'drizzle-orm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 
@@ -18,6 +18,31 @@ export class IndexerService {
   private readonly logger = new Logger(IndexerService.name);
 
   constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
+
+  /**
+   * Runs on app startup — if DB is empty, perform an initial sync.
+   */
+  async onModuleInit() {
+    try {
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.scoreUpdates);
+
+      if (count === 0) {
+        this.logger.log(
+          'Database is empty. Performing initial leaderboard sync...',
+        );
+        await this.syncRankingEvents();
+        this.logger.log('Initial leaderboard sync completed.');
+      } else {
+        this.logger.log(
+          `Database already has ${count} records — skipping initial seed.`,
+        );
+      }
+    } catch (err) {
+      this.logger.error('Error while checking or seeding the database', err);
+    }
+  }
 
   async fetchLatestLeaderboardData() {
     this.logger.log('Fetching leaderboard from OSRS API');
