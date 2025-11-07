@@ -5,6 +5,13 @@ import { parseRankItems } from './helpers/parse';
 import { inArray, not, sql } from 'drizzle-orm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { throttledQueue } from 'throttled-queue';
+import { retry } from 'ts-retry-promise';
+
+const THROTTLE_QUEUE = throttledQueue({
+  maxPerInterval: 20,
+  interval: FIVE_MINUTES_IN_MS,
+});
 
 import {
   CURRENT_OSRS_LEADERBOARD_CACHE_KEY,
@@ -42,6 +49,16 @@ export class IndexerService {
     } catch (err) {
       this.logger.error('Error while checking or seeding the database', err);
     }
+  }
+
+  private async throttleAndRetry<T>(fn: () => T | Promise<T>): Promise<T> {
+    return retry(() => THROTTLE_QUEUE(() => fn()), {
+      retries: 10,
+      delay: 20,
+      retryIf: (error) => {
+        return error?.status !== 404;
+      },
+    });
   }
 
   async fetchLatestLeaderboardData() {
@@ -153,6 +170,11 @@ export class IndexerService {
   })
   async syncLeaderboard() {
     this.logger.log(`Executing cron task=${SYNC_LEADERBOARD_CRON_NAME}`);
-    await this.syncRankingEvents();
+
+    try {
+      await this.syncRankingEvents();
+    } catch (e) {
+      this.logger.log(`Failed task=${SYNC_LEADERBOARD_CRON_NAME}. ERROR: ${e}`);
+    }
   }
 }

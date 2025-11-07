@@ -6,7 +6,6 @@ import { Test } from '@nestjs/testing';
 import { ApiController } from 'src/common/api/api.controller';
 import { ApiService } from 'src/common/api/api.service';
 
-// ---- Mock payloads (adjust to your shape if needed) ----
 const mockLeaderboard = [
   {
     userName: 'Wooooo91',
@@ -48,7 +47,6 @@ const mockHistorySingle = {
   ],
 };
 
-// ---- Mock ApiService implementation used by the controller ----
 const mockApiService = {
   getCurrentLeaderboard: vi.fn().mockResolvedValue(mockLeaderboard),
   getLeaderboardWithRankHistory: vi.fn().mockResolvedValue(mockHistoryAll),
@@ -60,9 +58,7 @@ describe('API routes (e2e — minimal app)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      // Register just the controller under test
       controllers: [ApiController],
-      // Provide the service the controller depends on
       providers: [{ provide: ApiService, useValue: mockApiService }],
     }).compile();
 
