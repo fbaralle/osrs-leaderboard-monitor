@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Mock } from 'vitest';
 
 // Hoisted state for mocks (runs before module graph loads)
 const H = vi.hoisted(() => {
@@ -13,7 +14,7 @@ const H = vi.hoisted(() => {
       insert: () => ({
         values: () => ({
           onConflictDoNothing: () => ({
-            returning: async () =>
+            returning: () =>
               Array.from({ length: tx.__inserted }, (_, i) => ({
                 id: i + 1,
               })),
@@ -22,7 +23,7 @@ const H = vi.hoisted(() => {
       }),
       delete: () => ({
         where: () => ({
-          returning: async () =>
+          returning: () =>
             Array.from({ length: tx.__removed }, (_, i) => ({ id: i + 1 })),
         }),
       }),
@@ -67,9 +68,9 @@ vi.mock('src/db', () => {
   return {
     schema,
     db: {
-      transaction: async (fn: Promise<void>) => fn(H.tx),
+      transaction: async (fn: () => Promise<any>) => fn(H.tx),
       select: () => ({
-        from: async () => [{ count: H.countRef.value }],
+        from: () => [{ count: H.countRef.value }],
       }),
     },
   };
@@ -83,10 +84,10 @@ describe('IndexerService (unit, vitest)', () => {
   let cache: unknown;
 
   const makeCache = () => {
-    const store = new Map<string, any>();
+    const store = new Map<string, unknown>();
     return {
-      get: vi.fn(async (k: string) => store.get(k)),
-      set: vi.fn(async (k: string, v: any) => store.set(k, v)),
+      get: vi.fn(async (k: string) => await store.get(k)),
+      set: vi.fn(async (k: string, v: string) => store.set(k, v)),
     };
   };
 
@@ -114,7 +115,10 @@ describe('IndexerService (unit, vitest)', () => {
   });
 
   it('syncRankingEvents: inserts new snapshots and removes dropped users', async () => {
-    gameApiClient.get.mockResolvedValueOnce({ data: apiRows });
+    vi.spyOn(
+      gameApiClient as unknown as { get: Mock },
+      'get',
+    ).mockResolvedValueOnce({ data: apiRows } as any);
 
     H.tx.__inserted = 2;
     H.tx.__removed = 1;

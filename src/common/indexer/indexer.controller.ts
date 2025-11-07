@@ -10,4 +10,10 @@ export class IndexerController {
   async updateRankings() {
     return await this.indexerService.syncRankingEvents();
   }
+
+  /** Manual execution rank events synchronization */
+  // @Post('/test-retry')
+  // async testRetry() {
+  //   return await this.indexerService.testThrottleRetry();
+  // }
 }

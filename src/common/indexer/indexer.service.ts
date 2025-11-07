@@ -5,17 +5,13 @@ import { parseRankItems } from './helpers/parse';
 import { inArray, not, sql } from 'drizzle-orm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
-import { throttledQueue } from 'throttled-queue';
 import { retry } from 'ts-retry-promise';
-
-const THROTTLE_QUEUE = throttledQueue({
-  maxPerInterval: 20,
-  interval: FIVE_MINUTES_IN_MS,
-});
-
 import {
   CURRENT_OSRS_LEADERBOARD_CACHE_KEY,
   FIVE_MINUTES_IN_MS,
+  PROMISE_MAX_RETRIES,
+  PROMISE_RETRY_DELAY_MS,
+  PROMISE_RETRY_TIMEOUT,
   SYNC_LEADERBOARD_CRON_NAME,
 } from 'src/config';
 import { RankItem, RankListResponse } from 'src/shared/types';
@@ -51,13 +47,15 @@ export class IndexerService {
     }
   }
 
-  private async throttleAndRetry<T>(fn: () => T | Promise<T>): Promise<T> {
-    return retry(() => THROTTLE_QUEUE(() => fn()), {
-      retries: 10,
-      delay: 20,
-      retryIf: (error) => {
-        return error?.status !== 404;
-      },
+  private async promiseWithRetry<T>(fn: () => T | Promise<T>): Promise<T> {
+    return retry(() => fn() as Promise<T>, {
+      retries: PROMISE_MAX_RETRIES,
+      delay: PROMISE_RETRY_DELAY_MS,
+      timeout: PROMISE_RETRY_TIMEOUT,
+      logger: (msg) =>
+        this.logger.debug(
+          `ERROR: ${msg}. Retrying in ${PROMISE_RETRY_DELAY_MS / 1000} secs.`,
+        ),
     });
   }
 
@@ -103,8 +101,11 @@ export class IndexerService {
     const leaderboardData = await this.fetchLatestLeaderboardData();
 
     if (!leaderboardData) {
+      this.logger.debug('No scores found');
       return;
     }
+
+    this.logger.debug('Saving scores to db');
 
     const updatedAtTimestamp = Date.now();
 
@@ -172,7 +173,7 @@ export class IndexerService {
     this.logger.log(`Executing cron task=${SYNC_LEADERBOARD_CRON_NAME}`);
 
     try {
-      await this.syncRankingEvents();
+      await this.promiseWithRetry(() => this.syncRankingEvents());
     } catch (e) {
       this.logger.log(`Failed task=${SYNC_LEADERBOARD_CRON_NAME}. ERROR: ${e}`);
     }
