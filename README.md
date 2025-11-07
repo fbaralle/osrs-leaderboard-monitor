@@ -45,7 +45,10 @@ Tracks the **Old School RuneScape – Ultimate Ironman** overall leaderboard (to
      - All users with **desc-sorted** histories, or
      - A single `userName` with desc-sorted history.
 
----
+## 🧩 Initial Sync on Startup
+
+When the application starts, the IndexerService automatically checks whether the database is empty.
+If no records are found, it performs an initial synchronization with the official Old School RuneScape Ultimate Ironman leaderboard.
 
 ## Requirements
 
