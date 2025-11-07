@@ -8,6 +8,7 @@ Tracks the **Old School RuneScape – Ultimate Ironman** overall leaderboard (to
   - Inserts only **new rank/score snapshots**.
   - **Stops tracking** players who are no longer in the top-50 (purges their history).
 - **Conflict avoidance:** a **UNIQUE index** on `(userName, rank, score)` plus `ON CONFLICT DO NOTHING` makes inserts idempotent.
+- **Retry mechanism**: If cron execution fails, it retries 10 times with a 20 seconds delay between each execution.
 - **API** provides:
   - Current leaderboard (latest snapshot per user).
   - Leaderboard with full history (or single user history).
