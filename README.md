@@ -18,7 +18,7 @@ Tracks the **Old School RuneScape – Ultimate Ironman** overall leaderboard (to
 - **Runtime:** NestJS (HTTP, cron, DI), Bun
 - **DB:** SQLite (via libSQL), Drizzle ORM + Drizzle Kit
 - **Cache:** Nest Cache (in-memory)
-- **Tests:** Jest
+- **Tests:** Vitest
 - **Docker:** Bun base image, compose with a **migrator** and an **API** service, DB persisted via a bind-mounted volume
 
 ---
